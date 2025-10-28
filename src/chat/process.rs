@@ -29,13 +29,13 @@ impl ChatSession {
 
     pub async fn chat(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         log::info!("welcome!! input your question at the prompt");
-        println!("");
+        println!();
         log::info!("menu :");
         log::info!("     : type 'read <filename>' to read a file");
         log::info!("     : type 'save <filename>' to save content to file");
         log::info!("     : type 'call <service>'  to execute a service");
         log::info!("     : type 'exit' to quit");
-        println!("");
+        println!();
         let mut result = String::new();
         let mut filecontents = String::new();
 
@@ -58,7 +58,7 @@ impl ChatSession {
             // 0 should be role = system
             match self.messages.get(1) {
                 Some(_) => {
-                    if filecontents.len() > 0 {
+                    if filecontents.is_empty() {
                         self.messages[1].content = format!("{} {}", input.clone(), filecontents);
                     } else {
                         self.messages[1].content = input.clone();
@@ -76,39 +76,48 @@ impl ChatSession {
                 max_tokens: self.config.spec.max_tokens,
             };
 
-            if input.clone().contains("save") && result.len() > 0 {
-                let res_file = input.split(" ").nth(1);
-                match res_file {
-                    Some(filename) => {
-                        fs::write(filename, result).expect("should save file");
-                        log::info!("succesfully saved {} to disk", filename);
-                        result = String::new();
-                    }
-                    None => {
-                        log::warn!("please specify a filname");
-                    }
-                }
-                println!("");
-                continue;
-            }
-
-            if input.clone().contains("read") {
-                let res_file = input.split(" ").nth(1);
-                match res_file {
-                    Some(filename) => {
-                        filecontents = fs::read_to_string(filename).expect("should read a file");
-                        log::info!("succesfully read {} from disk", filename);
-                    }
-                    None => {
-                        log::warn!("please specify a filname");
+            match input.clone() {
+                x if x.contains("save") => {
+                    if result.is_empty() {
+                        let res_file = input.split(" ").nth(1);
+                        match res_file {
+                            Some(filename) => {
+                                fs::write(filename, result)?;
+                                log::info!("succesfully saved {} to disk", filename);
+                                result = String::new();
+                            }
+                            None => {
+                                log::warn!("please specify a filename");
+                            }
+                        }
+                        println!();
+                        continue;
                     }
                 }
-                println!("");
-                continue;
+                x if x.contains("read") => {
+                    let res_file = input.split(" ").nth(1);
+                    match res_file {
+                        Some(filename) => {
+                            filecontents = fs::read_to_string(filename)?;
+                            log::info!("succesfully read {} from disk", filename);
+                        }
+                        None => {
+                            log::warn!("please specify a filename");
+                        }
+                    }
+                    println!();
+                    continue;
+                }
+                x if x.contains("call") => {
+                    log::warn!("not yet implemented");
+                    println!();
+                    continue;
+                }
+                _ => {
+                    // send request
+                    result = self.client.complete(request).await?;
+                }
             }
-
-            // send request
-            result = self.client.complete(request).await?;
         }
         Ok(())
     }

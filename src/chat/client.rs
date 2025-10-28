@@ -60,6 +60,7 @@ impl ChatClient for OpenAIClient {
         log::debug!("response {:?}", res.status());
         let content: ChatResponse = serde_json::from_slice(&res.bytes().await.unwrap())?;
         let result = content.choices[0].message.content.clone();
+        // preserve origin content (ie no log decorations)
         println!("{}", result.clone());
         Ok(result.clone())
     }

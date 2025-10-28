@@ -74,7 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Run chat
     if let Err(e) = session.chat().await {
         log::error!("Chat session error: {}", e);
-        return Err(Box::from(format!("{}", e.to_string())));
+        return Err(Box::from(e.to_string()));
     }
 
     Ok(())
