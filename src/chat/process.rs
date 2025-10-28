@@ -78,7 +78,7 @@ impl ChatSession {
 
             match input.clone() {
                 x if x.contains("save") => {
-                    if result.is_empty() {
+                    if !result.is_empty() {
                         let res_file = input.split(" ").nth(1);
                         match res_file {
                             Some(filename) => {
@@ -90,9 +90,11 @@ impl ChatSession {
                                 log::warn!("please specify a filename");
                             }
                         }
-                        println!();
-                        continue;
+                    } else {
+                        log::warn!("ensure you have executed a prompt")
                     }
+                    println!();
+                    continue;
                 }
                 x if x.contains("read") => {
                     let res_file = input.split(" ").nth(1);

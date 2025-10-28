@@ -62,6 +62,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .trim()
         .to_string();
 
+    log::info!("application : {}", env!("CARGO_PKG_NAME"));
+    log::info!("author      : {}", env!("CARGO_PKG_AUTHORS"));
+    log::info!("version     : {}", env!("CARGO_PKG_VERSION"));
+
     log::debug!("Using model: {}", cfg.spec.model);
     log::debug!("Connecting to API: {}", cfg.spec.api_url);
 

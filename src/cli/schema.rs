@@ -3,11 +3,13 @@ use serde_derive::{Deserialize, Serialize};
 
 /// rust-container-tool cli struct
 #[derive(Parser, Debug)]
-#[command(name = "rust-aichat-service")]
-#[command(author = "Luigi Mario Zuccarelli <luzuccar@redhat.com>")]
-#[command(version = "0.1.0")]
+#[command(name = env!("CARGO_PKG_NAME"))]
+#[command(author = env!("CARGO_PKG_AUTHORS"))]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "A simple chat service (aimed an openai schema)", long_about = None)]
-#[command(author, version, about, long_about = None)]
+#[command(
+    help_template = "{author-with-newline} {about-section}Version: {version} \n {usage-heading} {usage} \n {all-args} {tab}"
+)]
 pub struct Cli {
     /// config file to use
     #[arg(short, long, value_name = "config")]

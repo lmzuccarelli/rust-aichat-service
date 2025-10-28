@@ -1,7 +1,8 @@
 [package]
 name = "rust-aichat-service"
-version = "0.2.4"
+version = "0.2.6"
 edition = "2024"
+authors = ["Luigi Mario Zuccarelli<>luigizuccarelli@gmail.com"]
 
 [dependencies]
 clap = { version = "4.5.50", features = ["derive"] }
