@@ -1,0 +1,18 @@
+{
+  "kind": "ChatClient",
+  "apiVersion": "v1alpha1",
+  "spec": {
+    "api_key_path": "/home/lzuccarelli/.cerebras/token",
+    "api_url": "https://mostro:1337/echo",
+    "api_port": 443,
+    "stream": true,
+    "max_tokens": 20000,
+    "temperature": 0.2,
+    "top_p": 0.8,
+    "top_k": 20,
+    "n_keep": 68,
+    "n_predict": 256,
+    "cache_prompt": false,
+    "model": "qwen-3-235b-a22b-instruct-2507"
+  }
+}
