@@ -1,10 +1,10 @@
 # Overview
 
-A simple chat servcie with save, read and tool call features
+A simple chat service with save, read and tool call features
 
 ## Requirements
 
-This service uses cerebras (openai schema) as its base, this can be configured to any openai schema enabled service, along with the relevant api token
+This service uses cerebras (openai schema) as its base, it can be configured to use any openai schema enabled service, along with the relevant api token
 
 ## Usage
 

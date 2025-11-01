@@ -7,6 +7,7 @@ use std::{fs, str::FromStr};
 
 mod chat;
 mod cli;
+mod service;
 
 // local modules
 use cli::schema::*;

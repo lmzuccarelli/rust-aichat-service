@@ -1,5 +1,6 @@
 use crate::chat::{client::ChatClient, model::CompletionRequest, model::InputMessage};
 use crate::cli::schema::ApplicationConfig;
+use crate::service::execute::{Execute, ExecuteInterface};
 use custom_logger as log;
 use std::fs;
 use std::{
@@ -58,7 +59,7 @@ impl ChatSession {
             // 0 should be role = system
             match self.messages.get(1) {
                 Some(_) => {
-                    if filecontents.is_empty() {
+                    if !filecontents.is_empty() {
                         self.messages[1].content = format!("{} {}", input.clone(), filecontents);
                     } else {
                         self.messages[1].content = input.clone();
@@ -111,7 +112,15 @@ impl ChatSession {
                     continue;
                 }
                 x if x.contains("call") => {
-                    log::warn!("not yet implemented");
+                    let res_shell = input.split(" ").nth(1);
+                    match res_shell {
+                        Some(script) => {
+                            let _ = Execute::process_task(script.to_string());
+                        }
+                        None => {
+                            log::warn!("please ensure you call an executable shell script");
+                        }
+                    }
                     println!();
                     continue;
                 }
