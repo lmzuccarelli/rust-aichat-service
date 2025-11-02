@@ -27,6 +27,10 @@ pub struct Cli {
         default_value = "You are a helpful assistant. Use the context to help the user."
     )]
     pub system_prompt: String,
+
+    /// use speech-to-text service for prompting
+    #[arg(long, value_name = "stt", default_value_t = false)]
+    pub stt: bool,
 }
 
 /// Application configuration
@@ -41,8 +45,10 @@ pub struct ApplicationConfig {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Spec {
-    #[serde(rename = "api_key_path")]
-    pub api_key_path: String,
+    #[serde(rename = "openai_key_path")]
+    pub openai_key_path: String,
+    #[serde(rename = "deepgram_key_path")]
+    pub deepgram_key_path: String,
     #[serde(rename = "api_url")]
     pub api_url: String,
     #[serde(rename = "api_port")]

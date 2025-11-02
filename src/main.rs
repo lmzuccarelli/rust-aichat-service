@@ -1,5 +1,7 @@
 use crate::chat::client::OpenAIClient;
 use crate::chat::process::ChatSession;
+use crate::cli::schema::ApplicationConfig;
+use crate::stt::process::execute;
 use clap::Parser;
 use custom_logger as log;
 use std::sync::Arc;
@@ -8,6 +10,7 @@ use std::{fs, str::FromStr};
 mod chat;
 mod cli;
 mod service;
+mod stt;
 
 // local modules
 use cli::schema::*;
@@ -53,11 +56,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     // Read and trim API key
-    let api_key = fs::read_to_string(&cfg.spec.api_key_path)
+    let api_key = fs::read_to_string(&cfg.spec.openai_key_path)
         .map_err(|e| {
             format!(
                 "Failed to read API key file '{}': {}",
-                cfg.spec.api_key_path, e
+                cfg.spec.openai_key_path, e
             )
         })?
         .trim()
@@ -67,20 +70,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     log::info!("author      : {}", env!("CARGO_PKG_AUTHORS"));
     log::info!("version     : {}", env!("CARGO_PKG_VERSION"));
 
-    log::debug!("Using model: {}", cfg.spec.model);
-    log::debug!("Connecting to API: {}", cfg.spec.api_url);
+    if args.stt {
+        let _res = execute(cfg).await;
+    } else {
+        log::debug!("Using model: {}", cfg.spec.model);
+        log::debug!("Connecting to API: {}", cfg.spec.api_url);
 
-    let client = Arc::new(OpenAIClient::new(api_key, cfg.spec.api_url.clone()));
-    let mut session = ChatSession::new(client, cfg);
+        let client = Arc::new(OpenAIClient::new(api_key, cfg.spec.api_url.clone()));
+        let mut session = ChatSession::new(client, cfg);
 
-    // Use args system prompt or fallback
-    session.add_system_prompt(args.system_prompt);
+        // Use args system prompt or fallback
+        session.add_system_prompt(args.system_prompt);
 
-    // Run chat
-    if let Err(e) = session.chat().await {
-        log::error!("Chat session error: {}", e);
-        return Err(Box::from(e.to_string()));
+        // Run chat
+        if let Err(e) = session.chat().await {
+            log::error!("Chat session error: {}", e);
+            return Err(Box::from(e.to_string()));
+        }
     }
-
     Ok(())
 }

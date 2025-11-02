@@ -2,9 +2,11 @@
 
 A simple chat service with save, read and tool call features
 
+It also includes a simple speech-to-text interface for prompting
+
 ## Requirements
 
-This service uses cerebras (openai schema) as its base, it can be configured to use any openai schema enabled service, along with the relevant api token
+This service uses cerebras (openai schema) as its base as  well as deepgram for speech-to-text inference, it can be configured to use any openai schema enabled service, along with the relevant api token
 
 ## Usage
 

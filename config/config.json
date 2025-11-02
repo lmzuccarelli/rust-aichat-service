@@ -2,7 +2,8 @@
   "kind": "ChatClient",
   "apiVersion": "v1alpha1",
   "spec": {
-    "api_key_path": "/home/lzuccarelli/.cerebras/token",
+    "openai_key_path": "/home/luzuccar/.cerebras/token",
+    "deepgram_key_path": "/home/luzuccar/.deepgram/token",
     "api_url": "https://api.cerebras.ai/v1/chat/completions",
     "api_port": 443,
     "stream": false,
