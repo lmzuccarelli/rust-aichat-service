@@ -1,6 +1,6 @@
 [package]
 name = "rust-aichat-service"
-version = "0.3.7"
+version = "0.4.9"
 edition = "2024"
 authors = ["Luigi Mario Zuccarelli<>luigizuccarelli@gmail.com"]
 
@@ -20,6 +20,7 @@ bytes = "1.10.1"
 cpal = "0.16.0"
 crossbeam = "0.8.4"
 deepgram = "0.7.0"
+walkdir = "2.5.0"
 
 [profile.release]
 strip = true # Strip symbols from the binary

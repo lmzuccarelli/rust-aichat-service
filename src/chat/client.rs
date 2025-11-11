@@ -43,7 +43,6 @@ impl ChatClient for OpenAIClient {
     ) -> Result<String, Box<dyn std::error::Error>> {
         let json = serde_json::to_string(&request).unwrap();
         log::debug!("url {}", self.base_url);
-        log::debug!("key {}", self.api_key);
         let client = reqwest::Client::builder()
             .http1_title_case_headers()
             .build()?;
@@ -57,11 +56,11 @@ impl ChatClient for OpenAIClient {
             .await;
 
         let res = response.unwrap();
-        log::debug!("response {:?}", res.status());
+        log::debug!("[complete] response {:?}", res.status());
         let content: ChatResponse = serde_json::from_slice(&res.bytes().await.unwrap())?;
         let result = content.choices[0].message.content.clone();
         // preserve origin content (ie no log decorations)
-        println!("{}", result.clone());
-        Ok(result.clone())
+        println!("{}", result);
+        Ok(result)
     }
 }

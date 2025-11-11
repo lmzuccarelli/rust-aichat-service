@@ -1,6 +1,6 @@
-use crate::chat::client::{ChatClient, OpenAIClient};
-use crate::chat::model::{CompletionRequest, InputMessage};
+use crate::chat::client::OpenAIClient;
 use crate::cli::schema::ApplicationConfig;
+use crate::prompt::parser::PromptParser;
 use crate::service::execute::{Execute, ExecuteInterface};
 use bytes::{BufMut, Bytes, BytesMut};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -16,6 +16,8 @@ use futures::channel::mpsc::{self, Receiver as FuturesReceiver};
 use futures::stream::StreamExt;
 use std::fs;
 use std::io::Write;
+use std::process;
+use std::sync::Arc;
 use std::thread;
 
 macro_rules! create_stream {
@@ -51,7 +53,8 @@ fn microphone_as_stream() -> FuturesReceiver<Result<Bytes, RecvError>> {
             SampleFormat::I16 => create_stream!(device, config, sync_tx, i16),
             SampleFormat::U16 => create_stream!(device, config, sync_tx, u16),
             sample_format => {
-                panic!("unsupported sample format: {sample_format:?}");
+                log::error!("[microphone_as_stream] unsupported sample format: {sample_format:?}");
+                process::exit(1);
             }
         };
 
@@ -69,21 +72,20 @@ fn microphone_as_stream() -> FuturesReceiver<Result<Bytes, RecvError>> {
             match x {
                 Ok(_data) => {}
                 Err(_err) => {
-                    //log::error!("{} exiting", err);
-                    break;
+                    process::exit(1);
                 }
             }
         }
     });
-
     async_rx
 }
 
 pub async fn execute(config: ApplicationConfig) -> Result<(), DeepgramError> {
     let deepgram_api_key = fs::read_to_string(format!("{}", config.spec.deepgram_key_path))?;
-    let openai_api_key = fs::read_to_string(format!("{}", config.spec.openai_key_path))?;
+    let api_key = fs::read_to_string(format!("{}", config.spec.openai_key_path))?;
+    let client = Arc::new(OpenAIClient::new(api_key, config.spec.api_url.clone()));
+    let mut ep = Execute::new(client, config.clone());
     let dg_client = Deepgram::new(&deepgram_api_key.trim())?;
-    let mut ai_result = String::new();
     let mut results = dg_client
         .transcription()
         .stream_request()
@@ -94,8 +96,8 @@ pub async fn execute(config: ApplicationConfig) -> Result<(), DeepgramError> {
         .stream(microphone_as_stream())
         .await?;
 
-    log::info!("using speech-to-text service");
-    log::info!("deepgram request id: {}", results.request_id());
+    log::info!("[execute] using speech-to-text service");
+    log::info!("[execute] deepgram request id: {}", results.request_id());
     println!();
     print!("prompt> ");
     std::io::stdout().flush().unwrap();
@@ -114,71 +116,26 @@ pub async fn execute(config: ApplicationConfig) -> Result<(), DeepgramError> {
                 let obj: Word = serde_json::from_value(word.clone()).unwrap();
                 match obj.word.as_str() {
                     "send" => {
-                        println!(" processing...");
-                        let client = OpenAIClient::new(
-                            openai_api_key.trim().to_string(),
-                            config.spec.api_url.clone(),
-                        );
-                        let mut messages = Vec::new();
-                        messages.push(InputMessage::system(
-                            "You are a helpful assistant. Use the context to help the user.",
-                        ));
-                        messages.push(InputMessage::user(input.clone()));
-                        let request = CompletionRequest {
-                            model: config.spec.model.clone(),
-                            messages: messages.clone(),
-                            top_p: config.spec.top_p,
-                            temperature: Some(config.spec.temperature),
-                            stream: false,
-                            max_tokens: config.spec.max_tokens,
-                        };
-                        let res = client.complete(request).await;
-                        match res {
-                            Ok(data) => {
-                                ai_result = data;
-                            }
-                            Err(err) => {
-                                log::warn!(
-                                    "problems encounted with ai-inference {}",
-                                    err.to_string()
-                                );
-                            }
-                        }
-                        print!("prompt> ");
-                        std::io::stdout().flush().unwrap();
-                        input = String::new();
-                    }
-                    "save" => {
-                        input.truncate(input.len() - 1);
-                        let filename = format!("documents/{}.md", input.replace(" ", "-"));
-                        fs::write(&filename, ai_result.clone())?;
-                        log::info!("contents saved successfuly to {}", filename);
-                        print!("prompt> ");
-                        std::io::stdout().flush().unwrap();
-                        input = String::new();
-                    }
-                    "read" => {
-                        if input.contains("file") {
-                            let files = fs::read_dir("documents")?;
-                            for file in files {
-                                let name = file.unwrap().file_name().to_string_lossy().to_string();
-                                if name.contains(&input) {
-                                    ai_result =
-                                        fs::read_to_string(format!("documents/{}", name.clone()))?;
-                                    log::info!("file {} read successfuly", name);
+                        let res_input_command =
+                            PromptParser::parse(config.spec.working_dir.clone(), input);
+                        match res_input_command {
+                            Ok(input_command) => {
+                                let res = ep.process_task(input_command.clone()).await;
+                                match res {
+                                    Ok(_data) => {}
+                                    Err(err) => {
+                                        log::error!("{}", err.to_string());
+                                    }
                                 }
                             }
-                            print!("prompt> ");
-                            std::io::stdout().flush().unwrap();
-                            input = String::new();
+                            Err(err) => {
+                                log::warn!("{}", err.to_string());
+                            }
                         }
-                    }
-                    "execute" => {
-                        if input.contains("scripts") && input.contains("test") {
-                            let _ = Execute::process_task("scripts/test.sh".to_string());
-                        }
+                        println!();
                         print!("prompt> ");
                         std::io::stdout().flush().unwrap();
+                        input = String::new();
                     }
                     "cancel" => {
                         println!("cancelled");
@@ -188,7 +145,7 @@ pub async fn execute(config: ApplicationConfig) -> Result<(), DeepgramError> {
                     }
                     "exit" => {
                         println!();
-                        log::warn!("exiting stt service");
+                        log::warn!("[execute] exiting speech to text service");
                         exit = true;
                         break;
                     }

@@ -19,15 +19,6 @@ pub struct Cli {
     #[arg(value_enum, long, value_name = "loglevel", default_value = "info")]
     pub loglevel: String,
 
-    /// set the system prompt
-    #[arg(
-        value_enum,
-        long,
-        value_name = "system-prompt",
-        default_value = "You are a helpful assistant. Use the context to help the user."
-    )]
-    pub system_prompt: String,
-
     /// use speech-to-text service for prompting
     #[arg(long, value_name = "stt", default_value_t = false)]
     pub stt: bool,
@@ -71,4 +62,10 @@ pub struct Spec {
     pub n_predict: usize,
     #[serde(rename = "cache_prompt")]
     pub cache_prompt: bool,
+    #[serde(rename = "working_dir")]
+    pub working_dir: String,
+    #[serde(rename = "folders")]
+    pub folders: Vec<String>,
+    #[serde(rename = "system_prompt")]
+    pub system_prompt: String,
 }

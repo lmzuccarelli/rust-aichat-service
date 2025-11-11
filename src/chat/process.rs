@@ -1,44 +1,39 @@
-use crate::chat::{client::ChatClient, model::CompletionRequest, model::InputMessage};
+use crate::chat::client::OpenAIClient;
 use crate::cli::schema::ApplicationConfig;
+use crate::prompt::parser::PromptParser;
 use crate::service::execute::{Execute, ExecuteInterface};
 use custom_logger as log;
 use std::fs;
-use std::{
-    io::{self, Write},
-    sync::Arc,
-};
+use std::io::{self, Write};
+use std::sync::Arc;
 
 #[allow(unused)]
 pub struct ChatSession {
-    client: Arc<dyn ChatClient>,
-    messages: Vec<InputMessage>,
     config: ApplicationConfig,
 }
 
 impl ChatSession {
-    pub fn new(client: Arc<dyn ChatClient>, config: ApplicationConfig) -> Self {
-        Self {
-            client,
-            messages: Vec::new(),
-            config,
-        }
-    }
-
-    pub fn add_system_prompt(&mut self, prompt: impl ToString) {
-        self.messages.push(InputMessage::system(prompt));
+    pub fn new(config: ApplicationConfig) -> Self {
+        Self { config }
     }
 
     pub async fn chat(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        log::info!("welcome!! input your question at the prompt");
+        log::info!("[chat] welcome!! input your question at the prompt");
         println!();
         log::info!("menu :");
-        log::info!("     : type 'read <filename>' to read a file");
-        log::info!("     : type 'save <filename>' to save content to file");
-        log::info!("     : type 'call <service>'  to execute a service");
+        log::info!("     : type 'execute <service>'  to execute a service");
+        log::info!("     : type 'show current' to console print current session content");
         log::info!("     : type 'exit' to quit");
         println!();
-        let mut result = String::new();
-        let mut filecontents = String::new();
+
+        // Read and trim API key
+        let api_key = fs::read_to_string(self.config.spec.openai_key_path.clone())
+            .map_err(|e| format!("[chat] failed to read API key file : {}", e))?
+            .trim()
+            .to_string();
+
+        let client = Arc::new(OpenAIClient::new(api_key, self.config.spec.api_url.clone()));
+        let mut ep = Execute::new(client, self.config.clone());
 
         loop {
             print!("prompt> ");
@@ -53,82 +48,20 @@ impl ChatSession {
             }
 
             if input == "exit" {
+                log::info!("[chat] exiting session");
                 break;
             }
 
-            // 0 should be role = system
-            match self.messages.get(1) {
-                Some(_) => {
-                    if !filecontents.is_empty() {
-                        self.messages[1].content = format!("{} {}", input.clone(), filecontents);
-                    } else {
-                        self.messages[1].content = input.clone();
-                    }
-                }
-                None => self.messages.push(InputMessage::user(input.clone())),
-            }
-
-            let request = CompletionRequest {
-                model: self.config.spec.model.clone(),
-                messages: self.messages.clone(),
-                top_p: self.config.spec.top_p,
-                temperature: Some(self.config.spec.temperature),
-                stream: self.config.spec.stream,
-                max_tokens: self.config.spec.max_tokens,
-            };
-
-            match input.clone() {
-                x if x.contains("save") => {
-                    if !result.is_empty() {
-                        let res_file = input.split(" ").nth(1);
-                        match res_file {
-                            Some(filename) => {
-                                fs::write(filename, result)?;
-                                log::info!("succesfully saved {} to disk", filename);
-                                result = String::new();
-                            }
-                            None => {
-                                log::warn!("please specify a filename");
-                            }
-                        }
-                    } else {
-                        log::warn!("ensure you have executed a prompt")
-                    }
-                    println!();
-                    continue;
-                }
-                x if x.contains("read") => {
-                    let res_file = input.split(" ").nth(1);
-                    match res_file {
-                        Some(filename) => {
-                            filecontents = fs::read_to_string(filename)?;
-                            log::info!("succesfully read {} from disk", filename);
-                        }
-                        None => {
-                            log::warn!("please specify a filename");
-                        }
-                    }
-                    println!();
-                    continue;
-                }
-                x if x.contains("call") => {
-                    let res_shell = input.split(" ").nth(1);
-                    match res_shell {
-                        Some(script) => {
-                            let _ = Execute::process_task(script.to_string());
-                        }
-                        None => {
-                            log::warn!("please ensure you call an executable shell script");
-                        }
-                    }
-                    println!();
-                    continue;
-                }
-                _ => {
-                    // send request
-                    result = self.client.complete(request).await?;
+            let parsed_command = PromptParser::parse(self.config.spec.working_dir.clone(), input)?;
+            let res = ep.process_task(parsed_command).await;
+            // we don't want to crash so lets handle the error
+            match res {
+                Ok(_data) => {}
+                Err(err) => {
+                    log::error!("[chat] {}", err.to_string());
                 }
             }
+            println!();
         }
         Ok(())
     }

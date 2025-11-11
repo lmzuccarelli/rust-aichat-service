@@ -14,6 +14,9 @@
     "n_keep": 68,
     "n_predict": 256,
     "cache_prompt": false,
-    "model": "qwen-3-235b-a22b-instruct-2507"
+    "model": "qwen-3-235b-a22b-instruct-2507",
+    "working_dir": "/home/luzuccar/Projects/aichat-workspace",
+    "folders" : ["documents","scripts","staging"],
+    "system_prompt": "You are a helpful assistant. Use the context to help the user."
   }
 }

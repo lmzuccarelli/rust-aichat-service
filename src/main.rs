@@ -1,14 +1,13 @@
-use crate::chat::client::OpenAIClient;
 use crate::chat::process::ChatSession;
 use crate::cli::schema::ApplicationConfig;
 use crate::stt::process::execute;
 use clap::Parser;
 use custom_logger as log;
-use std::sync::Arc;
 use std::{fs, str::FromStr};
 
 mod chat;
 mod cli;
+mod prompt;
 mod service;
 mod stt;
 
@@ -38,53 +37,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // Setup logging
     let log_level = log::LevelFilter::from_str(&args.loglevel)
-        .map_err(|_| format!("Invalid log level: {}", args.loglevel))?;
+        .map_err(|_| format!("[main] invalid log level: {}", args.loglevel))?;
     log::Logging::new().with_level(log_level).init()?;
 
     // Read config
     let config_data = fs::read_to_string(&args.config)
-        .map_err(|e| format!("Failed to read config file '{}': {}", args.config, e))?;
+        .map_err(|e| format!("[main] failed to read config file '{}': {}", args.config, e))?;
     let cfg: ApplicationConfig = serde_json::from_str(&config_data)
-        .map_err(|e| format!("Invalid JSON in config file: {}", e))?;
+        .map_err(|e| format!("[main] invalid JSON in config file: {}", e))?;
 
     // Validate config
     if cfg.spec.api_url.is_empty() {
-        return Err("api_url cannot be empty".into());
+        return Err("[main] api_url cannot be empty".into());
     }
     if cfg.spec.model.is_empty() {
-        return Err("model cannot be empty".into());
+        return Err("[main] model cannot be empty".into());
     }
 
-    // Read and trim API key
-    let api_key = fs::read_to_string(&cfg.spec.openai_key_path)
-        .map_err(|e| {
-            format!(
-                "Failed to read API key file '{}': {}",
-                cfg.spec.openai_key_path, e
-            )
-        })?
-        .trim()
-        .to_string();
+    log::info!("[main] application : {}", env!("CARGO_PKG_NAME"));
+    log::info!("[main] author      : {}", env!("CARGO_PKG_AUTHORS"));
+    log::info!("[main] version     : {}", env!("CARGO_PKG_VERSION"));
 
-    log::info!("application : {}", env!("CARGO_PKG_NAME"));
-    log::info!("author      : {}", env!("CARGO_PKG_AUTHORS"));
-    log::info!("version     : {}", env!("CARGO_PKG_VERSION"));
+    // clean up all staging entries
+    fs::remove_dir_all(format!("{}/staging", cfg.spec.working_dir))?;
+    fs::create_dir_all(format!("{}/staging", cfg.spec.working_dir))?;
 
     if args.stt {
         let _res = execute(cfg).await;
     } else {
-        log::debug!("Using model: {}", cfg.spec.model);
-        log::debug!("Connecting to API: {}", cfg.spec.api_url);
+        log::debug!("[main] using model: {}", cfg.spec.model);
+        log::trace!("[main] connecting to API: {}", cfg.spec.api_url);
 
-        let client = Arc::new(OpenAIClient::new(api_key, cfg.spec.api_url.clone()));
-        let mut session = ChatSession::new(client, cfg);
-
-        // Use args system prompt or fallback
-        session.add_system_prompt(args.system_prompt);
+        let mut session = ChatSession::new(cfg);
 
         // Run chat
         if let Err(e) = session.chat().await {
-            log::error!("Chat session error: {}", e);
+            log::error!("[main] chat session error: {}", e);
             return Err(Box::from(e.to_string()));
         }
     }

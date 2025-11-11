@@ -1604,7 +1604,7 @@ dependencies = [
 
 [[package]]
 name = "rust-aichat-service"
-version = "0.3.7"
+version = "0.4.9"
 dependencies = [
  "async-trait",
  "audio",
@@ -1621,6 +1621,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "tokio",
+ "walkdir",
 ]
 
 [[package]]

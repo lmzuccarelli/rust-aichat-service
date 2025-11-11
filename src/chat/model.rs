@@ -47,8 +47,7 @@ pub struct CompletionRequest {
     pub max_tokens: usize,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ChatResponse {
     pub id: String,
     pub choices: Vec<Choice>,
@@ -88,7 +87,7 @@ pub struct Usage {
     #[serde(rename = "total_tokens")]
     pub total_tokens: i64,
     #[serde(rename = "prompt_tokens_details")]
-    pub prompt_tokens_details: PromptTokensDetails,
+    pub prompt_tokens_details: Option<PromptTokensDetails>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -109,21 +108,5 @@ pub struct TimeInfo {
     pub completion_time: f64,
     #[serde(rename = "total_time")]
     pub total_time: f64,
-    pub created: i64,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Content {
-    pub content_type: String,
-    pub body: String,
-}
-
-#[allow(unused)]
-impl Content {
-    pub fn text(content: impl ToString) -> Self {
-        Self {
-            content_type: "text/plain".to_string(),
-            body: content.to_string(),
-        }
-    }
+    pub created: f64,
 }
