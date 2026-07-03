@@ -61,6 +61,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // clean up all staging entries
     fs::remove_dir_all(format!("{}/staging", cfg.spec.working_dir))?;
     fs::create_dir_all(format!("{}/staging", cfg.spec.working_dir))?;
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
 
     if args.stt {
         let _res = execute(cfg).await;
